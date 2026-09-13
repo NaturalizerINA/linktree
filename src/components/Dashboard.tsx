@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { UserLink, AnalyticsData, UserProfile } from '../types';
 import { THEMES } from '../themes';
 import {
+  Menu,
   BarChart3, Link2, Palette, Eye, ArrowLeft, Plus, Trash2, Edit3, Save,
   Check, MoveUp, MoveDown, Globe, LogOut, TrendingUp, MousePointerClick,
   Monitor, Smartphone, Tablet, RefreshCw, Sparkles, ExternalLink, X
@@ -15,6 +16,7 @@ interface DashboardProps {
 export const Dashboard: React.FC<DashboardProps> = ({ onBackToLive }) => {
   const { user, profile, setProfile, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<'links' | 'appearance' | 'analytics'>('links');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   
   // Data states
   const [links, setLinks] = useState<UserLink[]>([]);
@@ -237,46 +239,150 @@ export const Dashboard: React.FC<DashboardProps> = ({ onBackToLive }) => {
   return (
     <div className="min-h-screen bg-[#090d16] text-slate-100 flex flex-col font-sans">
       {/* Top Navigation */}
-      <header className="border-b border-white/10 bg-[#0d1424]/80 backdrop-blur-md sticky top-0 z-30 px-4 sm:px-8 py-3.5 flex items-center justify-between">
+      <header className="border-b border-white/10 bg-[#0d1424]/90 backdrop-blur-md sticky top-0 z-40 px-4 sm:px-8 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
+          {/* Mobile Hamburger Button */}
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="md:hidden p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white transition-all focus:outline-none"
+            aria-label="Toggle Navigation Menu"
+          >
+            {isMobileMenuOpen ? (
+              <X className="w-5 h-5 text-sky-400" />
+            ) : (
+              <Menu className="w-5 h-5 text-slate-300" />
+            )}
+          </button>
+
           <button
             onClick={onBackToLive}
             className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all text-slate-300 hover:text-white flex items-center gap-1.5 text-xs font-semibold"
           >
             <Eye className="w-4 h-4 text-cyan-400" />
-            <span>Lihat Halaman Live</span>
+            <span className="hidden sm:inline">Lihat Halaman Live</span>
+            <span className="sm:hidden">Live</span>
           </button>
-          <div className="hidden sm:flex items-center gap-2 pl-2 border-l border-white/10">
-            <span className="text-sm font-bold bg-gradient-to-r from-sky-400 to-cyan-300 bg-clip-text text-transparent">
-              R2Art Linktree Studio
+          
+          <div className="flex items-center gap-2 pl-2 border-l border-white/10">
+            <span className="text-sm font-bold bg-gradient-to-r from-sky-400 to-cyan-300 bg-clip-text text-transparent truncate max-w-[150px] sm:max-w-none">
+              R2Art Studio
             </span>
           </div>
         </div>
 
-        {/* User Badge & Logout */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 text-right hidden md:block">
-            <div className="text-xs font-semibold text-white truncate max-w-[150px]">
+        {/* User Badge & Actions */}
+        <div className="flex items-center gap-2.5">
+          <div className="flex flex-col text-right hidden sm:block">
+            <div className="text-xs font-semibold text-white truncate max-w-[140px] md:max-w-[200px]">
               {user?.full_name || 'Pengguna Gateway'}
             </div>
-            <div className="text-[11px] text-slate-400 font-mono">
+            <div className="text-[10px] text-slate-400 font-mono">
               @{profile?.username || 'user'}
             </div>
           </div>
 
           <button
             onClick={logout}
-            className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-300 hover:text-rose-200 transition-all flex items-center gap-1.5 text-xs font-medium"
+            className="p-2 sm:px-3 sm:py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-300 hover:text-rose-200 transition-all flex items-center gap-1.5 text-xs font-medium"
             title="Keluar / Logout SSO"
           >
             <LogOut className="w-4 h-4" />
-            <span className="hidden sm:inline">Keluar</span>
+            <span className="hidden md:inline">Keluar</span>
           </button>
         </div>
       </header>
 
-      {/* Secondary Bar: Tabs */}
-      <div className="border-b border-white/10 bg-[#090d16]/90 px-4 sm:px-8 pt-3 flex items-center gap-2">
+      {/* Mobile Drawer / Hamburger Menu (Dropdown when overflow/small screen) */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden bg-[#0a101f]/95 border-b border-white/10 backdrop-blur-xl px-4 py-3 space-y-2 sticky top-[57px] z-30 shadow-2xl animate-in slide-in-from-top duration-200">
+          <div className="px-3 py-2 rounded-xl bg-white/[0.03] border border-white/5 flex items-center justify-between mb-2">
+            <div className="text-xs">
+              <div className="font-semibold text-white">{user?.full_name || 'Pengguna Gateway'}</div>
+              <div className="text-[11px] text-sky-400 font-mono">@{profile?.username || 'user'}</div>
+            </div>
+            <div className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              Online
+            </div>
+          </div>
+
+          <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-3 pt-1">
+            Navigasi Menu
+          </div>
+
+          <button
+            onClick={() => {
+              setActiveTab('links');
+              setIsMobileMenuOpen(false);
+            }}
+            className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all ${
+              activeTab === 'links'
+                ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
+                : 'text-slate-300 hover:bg-white/5 border border-transparent'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <Link2 className="w-4 h-4 text-sky-400" />
+              <span>Kelola Tautan</span>
+            </div>
+            <span className="px-2 py-0.5 rounded-full text-[10px] bg-sky-500/20 text-sky-300 font-mono">
+              {links.length}
+            </span>
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveTab('appearance');
+              setIsMobileMenuOpen(false);
+            }}
+            className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2.5 transition-all ${
+              activeTab === 'appearance'
+                ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
+                : 'text-slate-300 hover:bg-white/5 border border-transparent'
+            }`}
+          >
+            <Palette className="w-4 h-4 text-purple-400" />
+            <span>Tampilan & Template</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveTab('analytics');
+              setIsMobileMenuOpen(false);
+            }}
+            className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2.5 transition-all ${
+              activeTab === 'analytics'
+                ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
+                : 'text-slate-300 hover:bg-white/5 border border-transparent'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4 text-emerald-400" />
+            <span>Statistik Analitik</span>
+          </button>
+
+          <div className="pt-2 border-t border-white/10 flex items-center justify-between">
+            <button
+              onClick={() => {
+                setIsMobileMenuOpen(false);
+                onBackToLive();
+              }}
+              className="flex-1 py-2 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold text-cyan-300 flex items-center justify-center gap-1.5 mr-2"
+            >
+              <Eye className="w-3.5 h-3.5" />
+              <span>Lihat Live</span>
+            </button>
+            <button
+              onClick={logout}
+              className="py-2 px-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-xs font-semibold text-rose-300 flex items-center justify-center gap-1.5"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Keluar</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Desktop Navigation Tabs (Hidden on mobile overflow) */}
+      <div className="hidden md:flex border-b border-white/10 bg-[#090d16]/90 px-4 sm:px-8 pt-2 items-center gap-2">
         <button
           onClick={() => setActiveTab('links')}
           className={`px-4 py-2.5 rounded-t-xl text-sm font-semibold flex items-center gap-2 border-b-2 transition-all ${
@@ -407,7 +513,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onBackToLive }) => {
                     </div>
 
                     <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-                      <div className="text-right px-2 py-1 bg-white/5 rounded-lg border border-white/5 text-[11px] text-slate-300 hidden sm:block">
+                      <div className="text-right px-2 py-1 bg-white/5 rounded-lg border border-white/5 text-[10px] sm:text-[11px] text-slate-300">
                         <span className="font-bold text-sky-400">{link.clicks || 0}</span> klik
                       </div>
 
@@ -580,11 +686,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onBackToLive }) => {
               </div>
             </div>
 
-            <div className="flex justify-end">
+            <div className="flex justify-end w-full sm:w-auto">
               <button
                 type="submit"
                 disabled={saving}
-                className="px-6 py-3 rounded-xl bg-sky-500 hover:bg-sky-400 text-white font-bold text-sm flex items-center gap-2 transition-all shadow-lg shadow-sky-500/20 disabled:opacity-50"
+                className="w-full sm:w-auto justify-center px-6 py-3 rounded-xl bg-sky-500 hover:bg-sky-400 text-white font-bold text-sm flex items-center gap-2 transition-all shadow-lg shadow-sky-500/20 disabled:opacity-50 active:scale-95"
               >
                 {saving ? (
                   <>
