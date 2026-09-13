@@ -1,0 +1,26 @@
+services:
+  linktree:
+    image: linktree-app:latest
+    container_name: linktree-app
+    restart: unless-stopped
+    env_file:
+      - .env
+    networks:
+      - coolify
+      - postgres_default
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.linktree-http.rule=Host(`links.mukminullah.my.id`)"
+      - "traefik.http.routers.linktree-http.entrypoints=http"
+      - "traefik.http.routers.linktree-http.middlewares=redirect-to-https@file"
+      - "traefik.http.routers.linktree-https.rule=Host(`links.mukminullah.my.id`)"
+      - "traefik.http.routers.linktree-https.entrypoints=https"
+      - "traefik.http.routers.linktree-https.tls=true"
+      - "traefik.http.routers.linktree-https.tls.certresolver=letsencrypt"
+      - "traefik.http.services.linktree.loadbalancer.server.port=3000"
+
+networks:
+  coolify:
+    external: true
+  postgres_default:
+    external: true
