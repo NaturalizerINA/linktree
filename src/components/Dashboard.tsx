@@ -471,32 +471,34 @@ export const Dashboard: React.FC<DashboardProps> = ({ onBackToLive }) => {
                 {links.map((link, idx) => (
                   <div
                     key={link.id}
-                    className="p-4 rounded-2xl bg-white/[0.04] border border-white/10 hover:border-white/20 transition-all flex items-center justify-between gap-4 group"
+                    className="p-3.5 sm:p-4 rounded-2xl bg-white/[0.04] border border-white/10 hover:border-white/20 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 group"
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
                       {/* Order controls */}
-                      <div className="flex flex-col gap-1">
+                      <div className="flex sm:flex-col flex-row gap-1 shrink-0">
                         <button
                           disabled={idx === 0}
                           onClick={() => handleMove(idx, 'up')}
-                          className="p-1 rounded bg-white/5 hover:bg-white/15 text-slate-400 hover:text-white disabled:opacity-20 disabled:hover:bg-white/5"
+                          className="p-1.5 sm:p-1 rounded bg-white/5 hover:bg-white/15 text-slate-400 hover:text-white disabled:opacity-20 disabled:hover:bg-white/5"
+                          title="Pindah Ke Atas"
                         >
                           <MoveUp className="w-3.5 h-3.5" />
                         </button>
                         <button
                           disabled={idx === links.length - 1}
                           onClick={() => handleMove(idx, 'down')}
-                          className="p-1 rounded bg-white/5 hover:bg-white/15 text-slate-400 hover:text-white disabled:opacity-20 disabled:hover:bg-white/5"
+                          className="p-1.5 sm:p-1 rounded bg-white/5 hover:bg-white/15 text-slate-400 hover:text-white disabled:opacity-20 disabled:hover:bg-white/5"
+                          title="Pindah Ke Bawah"
                         >
                           <MoveDown className="w-3.5 h-3.5" />
                         </button>
                       </div>
 
-                      <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-400 flex items-center justify-center shrink-0">
-                        <Globe className="w-5 h-5" />
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-400 flex items-center justify-center shrink-0">
+                        <Globe className="w-4 h-4 sm:w-5 sm:h-5" />
                       </div>
 
-                      <div className="truncate">
+                      <div className="min-w-0 flex-1">
                         <h4 className="font-semibold text-slate-100 text-sm truncate group-hover:text-sky-300 transition-colors">
                           {link.title}
                         </h4>
@@ -504,34 +506,38 @@ export const Dashboard: React.FC<DashboardProps> = ({ onBackToLive }) => {
                           href={link.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-xs text-slate-400 hover:underline truncate flex items-center gap-1"
+                          className="text-xs text-slate-400 hover:underline truncate flex items-center gap-1 max-w-[200px] sm:max-w-none"
                         >
-                          {link.url}
-                          <ExternalLink className="w-2.5 h-2.5 inline" />
+                          <span className="truncate">{link.url}</span>
+                          <ExternalLink className="w-2.5 h-2.5 shrink-0 inline" />
                         </a>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-                      <div className="text-right px-2 py-1 bg-white/5 rounded-lg border border-white/5 text-[10px] sm:text-[11px] text-slate-300">
+                    <div className="flex items-center justify-between sm:justify-end gap-2 pt-2 sm:pt-0 border-t border-white/5 sm:border-0 shrink-0">
+                      <div className="text-center sm:text-right px-2.5 py-1 bg-white/5 rounded-lg border border-white/5 text-[11px] text-slate-300">
                         <span className="font-bold text-sky-400">{link.clicks || 0}</span> klik
                       </div>
 
-                      <button
-                        onClick={() => openEditModal(link)}
-                        className="p-2 rounded-xl bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white transition-all"
-                        title="Edit Tautan"
-                      >
-                        <Edit3 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => openEditModal(link)}
+                          className="px-3 py-1.5 sm:p-2 rounded-xl bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white text-xs font-medium flex items-center gap-1 transition-all"
+                          title="Edit Tautan"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                          <span className="sm:hidden">Edit</span>
+                        </button>
 
-                      <button
-                        onClick={() => handleDeleteLink(link.id)}
-                        className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 transition-all"
-                        title="Hapus Tautan"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                        <button
+                          onClick={() => handleDeleteLink(link.id)}
+                          className="px-3 py-1.5 sm:p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 text-xs font-medium flex items-center gap-1 transition-all"
+                          title="Hapus Tautan"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span className="sm:hidden">Hapus</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
