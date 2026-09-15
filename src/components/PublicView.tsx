@@ -148,12 +148,9 @@ export const PublicView: React.FC<PublicViewProps> = ({ username, onOpenDashboar
           <span className="absolute bottom-1 right-1 w-5 h-5 bg-emerald-500 border-2 border-[#090d16] rounded-full"></span>
         </div>
 
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-1">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-3">
           {profile.display_name}
         </h1>
-        <p className="text-xs sm:text-sm text-sky-400/90 font-mono mb-3">
-          @{profile.username}
-        </p>
 
         {profile.bio && (
           <p className="text-sm sm:text-base opacity-85 max-w-md mb-6 leading-relaxed font-normal">
