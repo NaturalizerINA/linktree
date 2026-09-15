@@ -1,5 +1,6 @@
 services:
   linktree:
+    build: .
     image: linktree-app:latest
     container_name: linktree-app
     restart: unless-stopped
