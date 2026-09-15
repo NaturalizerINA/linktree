@@ -8,13 +8,15 @@ import {
 
 interface PublicViewProps {
   username?: string;
+  currentUser?: any;
   onOpenDashboard?: () => void;
   isAuthenticated?: boolean;
 }
 
-export const PublicView: React.FC<PublicViewProps> = ({ username, onOpenDashboard, isAuthenticated }) => {
+export const PublicView: React.FC<PublicViewProps> = ({ username, currentUser, onOpenDashboard, isAuthenticated }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [links, setLinks] = useState<UserLink[]>([]);
+  const [isOwner, setIsOwner] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [copied, setCopied] = useState<boolean>(false);
 
@@ -26,7 +28,14 @@ export const PublicView: React.FC<PublicViewProps> = ({ username, onOpenDashboar
         if (res.ok) {
           const data = await res.json();
           setProfile(data.profile);
-          setLinks(data.links);
+          setLinks(data.links || []);
+          setIsOwner(Boolean(
+            data.isOwner ||
+            (currentUser && data.profile && (
+              currentUser.id === data.profile.user_id ||
+              currentUser.email?.toLowerCase() === data.profile.email?.toLowerCase()
+            ))
+          ));
         }
       } catch (err) {
         console.error('Failed to load profile:', err);
@@ -35,7 +44,7 @@ export const PublicView: React.FC<PublicViewProps> = ({ username, onOpenDashboar
       }
     }
     loadPublicData();
-  }, [username]);
+  }, [username, currentUser]);
 
   const handleLinkClick = async (link: UserLink) => {
     try {
@@ -47,7 +56,10 @@ export const PublicView: React.FC<PublicViewProps> = ({ username, onOpenDashboar
 
   const handleShare = () => {
     if (navigator.clipboard) {
-      navigator.clipboard.writeText(window.location.href);
+      const urlToCopy = profile?.username
+        ? `${window.location.origin}/@${profile.username}`
+        : window.location.href;
+      navigator.clipboard.writeText(urlToCopy);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -100,9 +112,26 @@ export const PublicView: React.FC<PublicViewProps> = ({ username, onOpenDashboar
 
   return (
     <div
-      className={`min-h-screen w-full flex flex-col justify-between items-center py-12 px-4 relative transition-colors duration-500 ${currentTheme.textColor}`}
+      className={`min-h-screen w-full flex flex-col justify-between items-center py-8 sm:py-12 px-4 relative transition-colors duration-500 ${currentTheme.textColor}`}
       style={{ background: currentTheme.bgStyle }}
     >
+      {/* Owner Quick Banner */}
+      {isOwner && onOpenDashboard && (
+        <div className="w-full max-w-[580px] mb-4 p-2.5 px-4 rounded-2xl bg-sky-500/15 border border-sky-500/30 backdrop-blur-md flex items-center justify-between text-xs text-sky-200 shadow-lg shadow-sky-500/10 z-20 animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span className="font-semibold">Halaman Tautan Publik Anda</span>
+          </div>
+          <button
+            onClick={onOpenDashboard}
+            className="px-3 py-1 rounded-xl bg-sky-500 hover:bg-sky-400 text-white font-bold text-[11px] flex items-center gap-1.5 transition-all shadow"
+          >
+            <Sparkles className="w-3 h-3" />
+            <span>Edit di Studio</span>
+          </button>
+        </div>
+      )}
+
       <div className="w-full max-w-[580px] flex items-center justify-between mb-8 z-10">
         <button
           onClick={handleShare}
@@ -205,8 +234,21 @@ export const PublicView: React.FC<PublicViewProps> = ({ username, onOpenDashboar
         </div>
       </main>
 
+      {!isOwner && !isAuthenticated && (
+        <div className="z-10 mb-6 text-center">
+          <a
+            href="https://login.mukminullah.my.id/login?return_to=https%3A%2F%2Flinks.mukminullah.my.id%2Fdashboard&client_id=r2art_linktree&app_name=R2Art%20Linktree"
+            className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 backdrop-blur-md text-xs font-semibold text-white/90 hover:text-white inline-flex items-center gap-2 transition-all hover:scale-105 shadow-md"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+            <span>Buat Halaman Linktree Dinamis Milikmu Sendiri</span>
+            <ArrowRight className="w-3 h-3" />
+          </a>
+        </div>
+      )}
+
       <footer className="z-10 text-center text-xs opacity-60 font-medium py-4">
-        <span>© {new Date().getFullYear()} {profile.display_name}. Powered by R2Art Gateway.</span>
+        <span>© {new Date().getFullYear()} {profile.display_name}. Powered by R2Art Dynamic Links.</span>
       </footer>
     </div>
   );

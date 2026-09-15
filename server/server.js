@@ -138,11 +138,24 @@ async function verifyUserSession(req) {
   }
 }
 
-// Ensure User Profile exists in Database
+// Ensure User Profile exists in Database and seed starter links if newly created
 async function getOrCreateUserProfile(user) {
-  const existing = await pool.query('SELECT * FROM user_profiles WHERE email = $1', [user.email]);
+  const existing = await pool.query(
+    'SELECT * FROM user_profiles WHERE user_id = $1 OR LOWER(email) = LOWER($2)',
+    [user.id, user.email]
+  );
   if (existing.rows.length > 0) {
-    return existing.rows[0];
+    const profile = existing.rows[0];
+    // Keep user_id in sync if user.id is UUID
+    if (user.id && profile.user_id !== user.id) {
+      try {
+        await pool.query('UPDATE user_profiles SET user_id = $1 WHERE email = $2', [user.id, user.email]);
+        profile.user_id = user.id;
+      } catch (e) {
+        console.warn('Could not update user_id in user_profiles:', e.message);
+      }
+    }
+    return profile;
   }
 
   // Generate username from email
@@ -158,13 +171,35 @@ async function getOrCreateUserProfile(user) {
     counter++;
   }
 
+  const userId = user.id || username;
   const res = await pool.query(
     `INSERT INTO user_profiles (user_id, email, username, display_name, avatar_url, theme_id, social_links)
      VALUES ($1, $2, $3, $4, $5, 'dark-aurora', '[]'::jsonb)
      RETURNING *`,
-    [user.id || username, user.email, username, user.full_name, user.avatar_url || '']
+    [userId, user.email.toLowerCase(), username, user.full_name || username, user.avatar_url || '']
   );
-  return res.rows[0];
+  const newProfile = res.rows[0];
+
+  // Seed starter links so new users immediately have functional links
+  try {
+    const starterLinks = [
+      { title: '🌐 Website & Portofolio', url: 'https://mukminullah.my.id', icon: 'globe', category: 'Portfolio', order: 1 },
+      { title: '🐙 GitHub Profile', url: 'https://github.com', icon: 'github', category: 'Social', order: 2 },
+      { title: '💼 LinkedIn Profile', url: 'https://linkedin.com', icon: 'linkedin', category: 'Social', order: 3 },
+      { title: '✉️ Hubungi Saya', url: `mailto:${user.email}`, icon: 'mail', category: 'Contact', order: 4 },
+    ];
+    for (const link of starterLinks) {
+      await pool.query(
+        `INSERT INTO user_links (user_id, title, url, icon, category, display_order, is_active)
+         VALUES ($1, $2, $3, $4, $5, $6, true)`,
+        [userId, link.title, link.url, link.icon, link.category, link.order]
+      );
+    }
+  } catch (err) {
+    console.error('Failed to seed starter links:', err.message);
+  }
+
+  return newProfile;
 }
 
 // Middleware: Require Authenticated User
@@ -217,36 +252,89 @@ function parseBrowser(ua = '') {
   return 'Other';
 }
 
-// 2. Public Linktree View: Get Page Data by Username or Primary
-app.get('/api/public/profile/:username?', async (req, res) => {
+// 2. Public Linktree View: Get Page Data by Identifier (Username, User ID, or Authenticated User)
+app.get('/api/public/profile/:identifier?', async (req, res) => {
   try {
-    let { username } = req.params;
-    let query = 'SELECT * FROM user_profiles WHERE username = $1';
-    let params = [username];
-
-    if (!username || username === 'primary' || username === 'default') {
-      // Find rahmad or first profile
-      query = `SELECT * FROM user_profiles WHERE username = 'rahmad' OR email LIKE 'rahmad%' ORDER BY created_at ASC LIMIT 1`;
-      params = [];
+    let identifier = req.params.identifier ? req.params.identifier.trim() : '';
+    // Strip leading @ or /u/ or u/
+    if (identifier.startsWith('@')) {
+      identifier = identifier.substring(1);
+    } else if (identifier.startsWith('u/')) {
+      identifier = identifier.substring(2);
     }
 
-    const profileRes = await pool.query(query, params);
-    if (profileRes.rows.length === 0) {
-      // If none found, fallback to any first profile
-      const anyProfile = await pool.query('SELECT * FROM user_profiles ORDER BY created_at ASC LIMIT 1');
-      if (anyProfile.rows.length === 0) {
-        return res.status(404).json({ error: 'Profile not found' });
+    let profile = null;
+    const authUser = await verifyUserSession(req);
+
+    if (identifier && identifier !== 'default' && identifier !== 'me' && identifier !== 'my' && identifier !== 'primary') {
+      // Find by username OR user_id OR email
+      const profileRes = await pool.query(
+        `SELECT * FROM user_profiles 
+         WHERE LOWER(username) = LOWER($1) 
+            OR user_id = $1 
+            OR LOWER(email) = LOWER($1) 
+         LIMIT 1`,
+        [identifier]
+      );
+      if (profileRes.rows.length > 0) {
+        profile = profileRes.rows[0];
       }
-      return res.json({ profile: anyProfile.rows[0], links: [] });
+    } else {
+      // Identifier not provided or requested 'me'/'default':
+      // 1. If requester is logged in, show their own profile!
+      if (authUser) {
+        profile = await getOrCreateUserProfile(authUser);
+      }
+      // 2. Fallback to primary showcase profile (e.g. rahmad)
+      if (!profile) {
+        const primaryRes = await pool.query(
+          `SELECT * FROM user_profiles WHERE username = 'rahmad' OR email LIKE 'rahmad%' ORDER BY created_at ASC LIMIT 1`
+        );
+        if (primaryRes.rows.length > 0) {
+          profile = primaryRes.rows[0];
+        } else {
+          const fallbackRes = await pool.query('SELECT * FROM user_profiles ORDER BY created_at ASC LIMIT 1');
+          if (fallbackRes.rows.length > 0) {
+            profile = fallbackRes.rows[0];
+          }
+        }
+      }
     }
 
-    const profile = profileRes.rows[0];
+    if (!profile) {
+      return res.status(404).json({ error: 'Profile not found' });
+    }
 
     // Fetch active links
-    const linksRes = await pool.query(
+    let linksRes = await pool.query(
       'SELECT id, title, url, icon, category, display_order, clicks FROM user_links WHERE user_id = $1 AND is_active = true ORDER BY display_order ASC, id ASC',
       [profile.user_id]
     );
+
+    // If active links is 0 and this is the authenticated user viewing their own profile, seed starter links
+    if (linksRes.rows.length === 0 && authUser && (authUser.id === profile.user_id || authUser.email.toLowerCase() === profile.email.toLowerCase())) {
+      try {
+        const starterLinks = [
+          { title: '🌐 Website & Portofolio', url: 'https://mukminullah.my.id', icon: 'globe', category: 'Portfolio', order: 1 },
+          { title: '🐙 GitHub Profile', url: 'https://github.com', icon: 'github', category: 'Social', order: 2 },
+          { title: '💼 LinkedIn Profile', url: 'https://linkedin.com', icon: 'linkedin', category: 'Social', order: 3 },
+          { title: '✉️ Hubungi Saya', url: `mailto:${profile.email}`, icon: 'mail', category: 'Contact', order: 4 },
+        ];
+        for (const link of starterLinks) {
+          await pool.query(
+            `INSERT INTO user_links (user_id, title, url, icon, category, display_order, is_active)
+             VALUES ($1, $2, $3, $4, $5, $6, true)`,
+            [profile.user_id, link.title, link.url, link.icon, link.category, link.order]
+          );
+        }
+        linksRes = await pool.query(
+          'SELECT id, title, url, icon, category, display_order, clicks FROM user_links WHERE user_id = $1 AND is_active = true ORDER BY display_order ASC, id ASC',
+          [profile.user_id]
+        );
+      } catch (err) {
+        console.warn('Could not auto-seed starter links on profile view:', err.message);
+      }
+    }
 
     // Record page view analytics async
     const visitorIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
@@ -261,9 +349,12 @@ app.get('/api/public/profile/:username?', async (req, res) => {
       [profile.user_id, visitorIp.toString(), userAgent, referrer, deviceType, browser]
     ).catch(e => console.error('Analytics page_view log error:', e.message));
 
+    const isOwner = !!(authUser && (authUser.id === profile.user_id || authUser.email.toLowerCase() === profile.email.toLowerCase()));
+
     return res.json({
       profile,
       links: linksRes.rows,
+      isOwner,
     });
   } catch (err) {
     console.error('Error fetching public profile:', err);
@@ -313,11 +404,43 @@ app.get('/api/dashboard/my-data', requireAuth, async (req, res) => {
 
     // Refresh profile
     const profileRes = await pool.query('SELECT * FROM user_profiles WHERE user_id = $1', [userId]);
-    const linksRes = await pool.query('SELECT * FROM user_links WHERE user_id = $1 ORDER BY display_order ASC, id ASC', [userId]);
+    let linksRes = await pool.query('SELECT * FROM user_links WHERE user_id = $1 ORDER BY display_order ASC, id ASC', [userId]);
+
+    // If newly opened and user has 0 links, provide starter default links
+    if (linksRes.rows.length === 0) {
+      try {
+        const starterLinks = [
+          { title: '🌐 Website & Portofolio', url: 'https://mukminullah.my.id', icon: 'globe', category: 'Portfolio', order: 1 },
+          { title: '🐙 GitHub Profile', url: 'https://github.com', icon: 'github', category: 'Social', order: 2 },
+          { title: '💼 LinkedIn Profile', url: 'https://linkedin.com', icon: 'linkedin', category: 'Social', order: 3 },
+          { title: '✉️ Hubungi Saya', url: `mailto:${req.profile.email}`, icon: 'mail', category: 'Contact', order: 4 },
+        ];
+        for (const link of starterLinks) {
+          await pool.query(
+            `INSERT INTO user_links (user_id, title, url, icon, category, display_order, is_active)
+             VALUES ($1, $2, $3, $4, $5, $6, true)`,
+            [userId, link.title, link.url, link.icon, link.category, link.order]
+          );
+        }
+        linksRes = await pool.query('SELECT * FROM user_links WHERE user_id = $1 ORDER BY display_order ASC, id ASC', [userId]);
+      } catch (e) {
+        console.warn('Could not auto-seed starter links on my-data:', e.message);
+      }
+    }
+
+    const currentProfile = profileRes.rows[0];
+    const host = req.get('host') || 'links.mukminullah.my.id';
+    const proto = req.protocol === 'https' || req.get('x-forwarded-proto') === 'https' ? 'https' : 'http';
 
     return res.json({
-      profile: profileRes.rows[0],
+      profile: currentProfile,
       links: linksRes.rows,
+      urls: {
+        username_path: `/@${currentProfile.username}`,
+        id_path: `/u/${currentProfile.user_id}`,
+        full_username_url: `${proto}://${host}/@${currentProfile.username}`,
+        full_id_url: `${proto}://${host}/u/${currentProfile.user_id}`,
+      }
     });
   } catch (err) {
     console.error('Dashboard data error:', err);

@@ -6,7 +6,8 @@ import {
   Menu,
   BarChart3, Link2, Palette, Eye, ArrowLeft, Plus, Trash2, Edit3, Save,
   Check, MoveUp, MoveDown, Globe, LogOut, TrendingUp, MousePointerClick,
-  Monitor, Smartphone, Tablet, RefreshCw, Sparkles, ExternalLink, X
+  Monitor, Smartphone, Tablet, RefreshCw, Sparkles, ExternalLink, X,
+  Copy, QrCode, Share2
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -24,6 +25,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onBackToLive }) => {
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [copiedUrl, setCopiedUrl] = useState<boolean>(false);
+  const [showQrModal, setShowQrModal] = useState<boolean>(false);
 
   // Profile Form states
   const [displayName, setDisplayName] = useState('');
@@ -236,6 +239,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ onBackToLive }) => {
     setIsModalOpen(true);
   };
 
+  const handleCopyUrl = (textToCopy: string) => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(textToCopy);
+      setCopiedUrl(true);
+      setToastMsg('Tautan URL profil berhasil disalin!');
+      setTimeout(() => setCopiedUrl(false), 2500);
+      setTimeout(() => setToastMsg(null), 3000);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#090d16] text-slate-100 flex flex-col font-sans">
       {/* Top Navigation */}
@@ -429,6 +442,65 @@ export const Dashboard: React.FC<DashboardProps> = ({ onBackToLive }) => {
           </div>
         )}
 
+        {/* Dynamic Personal URL Hero Banner */}
+        <div className="mb-6 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-sky-950/40 via-indigo-950/30 to-purple-950/40 border border-sky-500/20 backdrop-blur-xl shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-start sm:items-center gap-3.5 min-w-0">
+            <div className="w-12 h-12 rounded-2xl bg-sky-500/20 border border-sky-400/30 flex items-center justify-center shrink-0 text-sky-400 shadow-md shadow-sky-500/10">
+              <Share2 className="w-6 h-6" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-bold text-sky-400 uppercase tracking-wider">
+                  URL Linktree Publik Anda
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  Aktif & Dinamis
+                </span>
+              </div>
+              <div className="flex items-center gap-2 mt-1">
+                <a
+                  href={`/@${profile?.username || 'user'}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-base sm:text-lg font-mono font-bold text-white hover:text-sky-300 truncate flex items-center gap-1.5 transition-colors"
+                >
+                  <span className="text-sky-400">{window.location.host}/@</span>
+                  <span className="underline decoration-sky-500/40 underline-offset-4">{profile?.username || 'user'}</span>
+                  <ExternalLink className="w-4 h-4 text-slate-400 shrink-0" />
+                </a>
+              </div>
+              <div className="text-[11px] text-slate-400 font-mono mt-0.5 truncate">
+                ID Unik: <span className="text-slate-300">{profile?.user_id || user?.id}</span> • Path: <span className="text-sky-300/80">/u/{profile?.user_id || user?.id}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap shrink-0">
+            <button
+              onClick={() => handleCopyUrl(`${window.location.origin}/@${profile?.username || 'user'}`)}
+              className="px-3.5 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-white font-semibold text-xs flex items-center gap-1.5 transition-all shadow-lg shadow-sky-500/25 active:scale-95"
+            >
+              {copiedUrl ? <Check className="w-4 h-4 text-emerald-300" /> : <Copy className="w-4 h-4" />}
+              <span>{copiedUrl ? 'Tersalin!' : 'Salin URL'}</span>
+            </button>
+            <button
+              onClick={() => onBackToLive()}
+              className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-slate-200 hover:text-white font-semibold text-xs flex items-center gap-1.5 transition-all active:scale-95"
+            >
+              <Eye className="w-4 h-4 text-cyan-400" />
+              <span>Buka Live</span>
+            </button>
+            <button
+              onClick={() => setShowQrModal(true)}
+              className="p-2 sm:px-3 sm:py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white text-xs font-semibold flex items-center gap-1.5 transition-all"
+              title="Tampilkan QR Code"
+            >
+              <QrCode className="w-4 h-4 text-purple-400" />
+              <span className="hidden sm:inline">QR Code</span>
+            </button>
+          </div>
+        </div>
+
         {/* TAB 1: LINKS MANAGEMENT */}
         {activeTab === 'links' && (
           <div className="space-y-6">
@@ -575,12 +647,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ onBackToLive }) => {
                     <input
                       type="text"
                       value={username}
-                      onChange={e => setUsername(e.target.value)}
+                      onChange={e => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
                       className="w-full px-4 py-2.5 rounded-r-xl bg-black/40 border border-white/10 text-white text-sm focus:border-sky-400 focus:outline-none font-mono"
                       placeholder="username"
                       required
                     />
                   </div>
+                  <p className="text-[11px] text-slate-400 mt-1.5 flex items-center gap-1">
+                    <span>URL Publik:</span>
+                    <span className="text-sky-300 font-mono font-medium">{window.location.host}/@{username || 'username'}</span>
+                  </p>
                 </div>
               </div>
 
@@ -861,6 +937,59 @@ export const Dashboard: React.FC<DashboardProps> = ({ onBackToLive }) => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* QR Code Share Modal */}
+      {showQrModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-sm rounded-3xl bg-[#0d1424] border border-white/10 p-6 shadow-2xl relative text-center">
+            <button
+              onClick={() => setShowQrModal(false)}
+              className="absolute top-4 right-4 p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="w-12 h-12 rounded-2xl bg-purple-500/20 border border-purple-500/30 text-purple-400 mx-auto flex items-center justify-center mb-3">
+              <QrCode className="w-6 h-6" />
+            </div>
+
+            <h3 className="text-lg font-bold text-white mb-1">QR Code Linktree</h3>
+            <p className="text-xs text-slate-400 mb-5">
+              Pindai QR Code ini menggunakan smartphone untuk langsung membuka halaman profil Anda.
+            </p>
+
+            <div className="p-4 bg-white rounded-2xl inline-block shadow-xl mb-4">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
+                  `${window.location.origin}/@${profile?.username || 'user'}`
+                )}`}
+                alt="QR Code"
+                className="w-44 h-44 mx-auto"
+              />
+            </div>
+
+            <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs font-mono text-slate-300 break-all mb-4">
+              {`${window.location.origin}/@${profile?.username || 'user'}`}
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleCopyUrl(`${window.location.origin}/@${profile?.username || 'user'}`)}
+                className="flex-1 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md shadow-sky-500/20"
+              >
+                {copiedUrl ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                <span>{copiedUrl ? 'Tersalin!' : 'Salin URL'}</span>
+              </button>
+              <button
+                onClick={() => setShowQrModal(false)}
+                className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-semibold text-xs transition-all"
+              >
+                Tutup
+              </button>
+            </div>
           </div>
         </div>
       )}
