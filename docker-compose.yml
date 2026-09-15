@@ -10,6 +10,7 @@ services:
       - postgres_default
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=coolify"
       - "traefik.http.routers.linktree-http.rule=Host(`links.mukminullah.my.id`)"
       - "traefik.http.routers.linktree-http.entrypoints=http"
       - "traefik.http.routers.linktree-http.middlewares=redirect-to-https@file"

@@ -3,7 +3,7 @@ import { UserProfile, UserLink } from '../types';
 import { getThemeById } from '../themes';
 import { 
   Globe, Github, Linkedin, Send, Mail, Twitter, Instagram, Youtube, ExternalLink,
-  Sparkles, Lock, ArrowRight, Share2, Check
+  Sparkles, ArrowRight, Share2, Check
 } from 'lucide-react';
 
 interface PublicViewProps {
@@ -70,7 +70,7 @@ export const PublicView: React.FC<PublicViewProps> = ({ username, onOpenDashboar
         <div className="text-center max-w-sm">
           <h2 className="text-2xl font-bold mb-2">Profil Tidak Ditemukan</h2>
           <p className="text-slate-400 text-sm mb-6">Profil dengan tautan ini belum tersedia atau telah diubah.</p>
-          {onOpenDashboard && (
+          {onOpenDashboard && isAuthenticated && (
             <button
               onClick={onOpenDashboard}
               className="px-5 py-2.5 bg-sky-500 hover:bg-sky-400 font-semibold rounded-xl text-white transition-all inline-flex items-center gap-2 text-sm shadow-lg shadow-sky-500/25"
@@ -113,22 +113,13 @@ export const PublicView: React.FC<PublicViewProps> = ({ username, onOpenDashboar
           <span className="text-xs font-medium pr-1">{copied ? 'Tersalin!' : 'Bagikan'}</span>
         </button>
 
-        {onOpenDashboard && (
+        {onOpenDashboard && isAuthenticated && (
           <button
             onClick={onOpenDashboard}
             className="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 transition-all text-xs font-semibold flex items-center gap-1.5 shadow-sm group hover:border-cyan-400/50"
           >
-            {isAuthenticated ? (
-              <>
-                <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Dashboard Kelola</span>
-              </>
-            ) : (
-              <>
-                <Lock className="w-3.5 h-3.5 text-amber-400" />
-                <span>Login Dashboard</span>
-              </>
-            )}
+            <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+            <span>Dashboard Kelola</span>
             <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
           </button>
         )}
